@@ -5,41 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>饶品祺 & 杨颜睿 餐厅</title>
+    <title>饶 & 杨 的生活系统</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-      body { 
-        font-family: 'Noto Sans SC', sans-serif; 
-        -webkit-tap-highlight-color: transparent;
-        position: fixed;
-        width: 100%;
-        height: 100%;
-        overflow: hidden;
-      }
+      body { font-family: 'Noto Sans SC', sans-serif; -webkit-tap-highlight-color: transparent; position: fixed; width: 100%; height: 100%; overflow: hidden; }
       .no-scrollbar::-webkit-scrollbar { display: none; }
       .h-safe-screen { height: 100dvh; }
-      @keyframes soft-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-      .animate-soft-bounce { animation: soft-bounce 3s infinite ease-in-out; }
-      .fade-in { animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
-      @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-      .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
-      .shadow-soft { box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05); }
-      .shadow-red { box-shadow: 0 10px 15px -3px rgba(220, 38, 38, 0.3); }
-      .progress-glow { box-shadow: 0 0 12px rgba(245, 158, 11, 0.3); }
-      .pt-ios-safe { padding-top: env(safe-area-inset-top); }
-      .pb-ios-safe { padding-bottom: env(safe-area-inset-bottom); }
+      .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      .pb-ios-safe { padding-bottom: calc(env(safe-area-inset-bottom) + 80px); }
+      .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: calc(65px + env(safe-area-inset-bottom)); background: rgba(255,255,255,0.95); backdrop-filter: blur(20px); border-top: 1px solid rgba(0,0,0,0.05); display: flex; justify-content: space-around; align-items: center; padding-bottom: env(safe-area-inset-bottom); z-index: 50; }
     </style>
   </head>
-  <body class="bg-slate-50 text-slate-900 overflow-hidden">
+  <body class="bg-slate-50 text-slate-900">
     <div id="root" class="h-safe-screen w-full"></div>
 
     <script type="text/babel">
       const { useState, useEffect } = React;
 
+      // 1. 完整原始菜单数据
       const MENU_DATA = [
         { id: 99, name: '饶品祺亲自下厨', price: 20, category: '必选项', desc: '店长特供，今日厨艺精进中', must: true },
         { id: 1, name: '辣椒炒肉', price: 18, category: '热菜', desc: '鲜嫩下饭，招牌必点' },
@@ -63,21 +51,31 @@
         { id: 19, name: '开水', price: 0, category: '饮品', desc: '暖胃免费' }
       ];
 
+      // 2. 愿望商店数据 (价格已按要求更新)
+      const WISH_DATA = [
+        { id: 'w1', name: '充电一次', price: 100, category: '核心', icon: '🔋', desc: '基础充电能量补充' },
+        { id: 'w1_sub1', name: '└ 附加：战袍自选', price: 50, category: '核心', icon: '👗', desc: '指定今日特别穿搭' },
+        { id: 'w1_sub2', name: '└ 附加：吃糖 10分钟', price: 50, category: '核心', icon: '🍬', desc: '甜蜜互动时间' },
+        { id: 'w2', name: '按摩 10分钟', price: 30, category: '服务', icon: '💆‍♂️', desc: '舒缓疲劳，手法专业' },
+        { id: 'w3', name: '洗碗特权', price: 100, category: '服务', icon: '🧼', desc: '今日碗筷由杨女士承包' },
+        { id: 'w4', name: '免死金牌', price: 150, category: '特权', icon: '🛡️', desc: '化解一次冲突或免除任务' },
+        { id: 'w5', name: '大奖：全天听话', price: 500, category: '终极', icon: '🏆', desc: '24小时绝对服从指令' }
+      ];
+
       function App() {
+        const [tab, setTab] = useState('restaurant');
         const [step, setStep] = useState('welcome');
         const [cart, setCart] = useState({});
         const [activeCat, setActiveCat] = useState('必选项');
         
-        // --- 方案一核心修改：初始化时尝试从本地读取积分 ---
-        const [totalHistory, setTotalHistory] = useState(() => {
+        const [totalPoints, setTotalPoints] = useState(() => {
           const saved = localStorage.getItem('rpq_restaurant_points');
           return saved ? parseInt(saved) : 0;
         });
 
-        // --- 方案一核心修改：当积分发生变化时，同步到本地存储 ---
         useEffect(() => {
-          localStorage.setItem('rpq_restaurant_points', totalHistory.toString());
-        }, [totalHistory]);
+          localStorage.setItem('rpq_restaurant_points', totalPoints.toString());
+        }, [totalPoints]);
 
         const currentTotal = Object.keys(cart).reduce((sum, id) => {
           const item = MENU_DATA.find(m => m.id == id);
@@ -87,171 +85,131 @@
         const hasMust = Object.keys(cart).some(id => MENU_DATA.find(m => m.id == id).must);
 
         if (step === 'welcome') return (
-          <div className="h-full bg-gradient-to-br from-red-500 to-red-700 flex flex-col items-center justify-center text-white p-6 fade-in relative overflow-hidden">
-            <div className="absolute top-[-10%] left-[-10%] w-64 h-64 bg-red-400 rounded-full blur-3xl opacity-20"></div>
-            <div className="absolute bottom-[-10%] right-[-10%] w-64 h-64 bg-orange-400 rounded-full blur-3xl opacity-20"></div>
-            <div className="mb-8 animate-soft-bounce text-8xl drop-shadow-2xl">🍳</div>
-            <h1 className="text-4xl font-black mb-3 tracking-tight text-center drop-shadow-md">
-              饶品祺 & 杨颜睿<br/>
-              <span className="text-2xl opacity-90 italic font-serif">Private Kitchen</span>
-            </h1>
-            <div className="w-12 h-1 bg-white/30 rounded-full mb-8"></div>
-            <p className="text-red-50 mb-16 opacity-80 font-light tracking-[0.2em] text-sm uppercase">Smart Dining System</p>
-            <button onClick={() => setStep('ordering')} 
-              className="bg-white text-red-600 px-14 py-4 rounded-2xl text-xl font-black shadow-2xl active:scale-95 transition-all">
-              开始点餐
-            </button>
+          <div className="h-full bg-slate-900 flex flex-col items-center justify-center text-white p-6 fade-in relative overflow-hidden">
+            <div className="absolute top-[-10%] left-[-10%] w-64 h-64 bg-red-500 rounded-full blur-3xl opacity-10"></div>
+            <div className="text-8xl mb-8 animate-bounce text-red-500">❤️</div>
+            <h1 className="text-3xl font-black mb-2 text-center tracking-tight">饶 & 杨 的生活系统</h1>
+            <p className="text-slate-500 text-xs mb-12 tracking-[0.3em] uppercase">Private Life Management</p>
+            <button onClick={() => setStep('main')} className="bg-white text-slate-900 px-14 py-4 rounded-2xl font-black shadow-2xl active:scale-95 transition-all relative z-10">点击进入</button>
           </div>
         );
 
-        if (step === 'ordering') return (
-          <div className="h-full flex flex-col bg-slate-50 fade-in pt-ios-safe">
-            <header className="p-6 pt-12 pb-6 bg-white flex justify-between items-center">
-              <div>
-                <h1 className="text-2xl font-black text-slate-800 tracking-tight">今日菜单</h1>
-                <div className="flex items-center gap-2 mt-1">
-                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                    <p className="text-slate-400 text-[11px] font-bold tracking-widest uppercase">Table A-08</p>
-                </div>
-              </div>
-              <div className="bg-orange-50 px-4 py-2 rounded-2xl border border-orange-100">
-                <p className="text-[10px] text-orange-600 font-bold text-center">累计积分</p>
-                <p className="text-xl font-black text-orange-500 text-center leading-none mt-1">{totalHistory}</p>
-              </div>
-            </header>
-
-            <div className="flex flex-1 overflow-hidden">
-              <div className="w-20 bg-slate-100/50 flex flex-col pt-4 overflow-y-auto no-scrollbar">
-                {['必选项', '热菜', '主食', '饮品'].map(cat => (
-                  <button key={cat} onClick={() => setActiveCat(cat)}
-                    className={`w-full py-5 text-xs font-bold transition-all relative ${activeCat === cat ? 'text-red-600' : 'text-slate-400'}`}>
-                    {activeCat === cat && <div className="absolute left-0 top-2 bottom-2 w-1.5 bg-red-600 rounded-r-full shadow-[2px_0_8px_rgba(220,38,38,0.2)]"></div>}
-                    <span className={activeCat === cat ? 'scale-110 block transition-transform' : ''}>{cat}</span>
-                  </button>
-                ))}
-              </div>
-              <div className="flex-1 overflow-y-auto p-4 no-scrollbar bg-white rounded-tl-[32px] shadow-inner">
-                {MENU_DATA.filter(i => i.category === activeCat).map(item => (
-                  <div key={item.id} className="flex gap-4 mb-6 p-2 rounded-2xl hover:bg-slate-50 transition-colors fade-in">
-                    <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center text-3xl shadow-sm border border-slate-50">
-                      {item.category === '饮品' ? '🥤' : item.category === '主食' ? '🍚' : '🥘'}
+        return (
+          <div className="h-full flex flex-col bg-slate-50">
+            <div className="flex-1 overflow-hidden relative">
+              {tab === 'restaurant' ? (
+                /* 餐厅模式 */
+                <div className="h-full flex flex-col fade-in">
+                  <header className="p-6 pt-12 bg-white flex justify-between items-end shadow-sm">
+                    <div>
+                      <h1 className="text-2xl font-black text-slate-800 tracking-tighter">今日菜单</h1>
+                      <p className="text-[10px] text-green-500 font-bold uppercase tracking-widest mt-1">Chef: Rao Pinqi</p>
                     </div>
-                    <div className="flex-1 flex flex-col justify-between py-0.5">
-                      <div>
-                        <h3 className="font-bold text-slate-800 text-sm flex items-center gap-1">
-                            {item.name}
-                            {item.must && <span className="bg-red-100 text-red-600 text-[9px] px-1.5 py-0.5 rounded-md">必选</span>}
-                        </h3>
-                        <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-1 italic">{item.desc}</p>
-                      </div>
-                      <div className="flex justify-between items-center mt-2">
-                        <span className="text-red-600 font-black text-sm">{item.price} <span className="text-[10px] opacity-60 italic">PTS</span></span>
-                        <div className="flex items-center gap-3">
-                          {cart[item.id] > 0 && (
-                            <button onClick={() => {
-                              const newCart = {...cart};
-                              newCart[item.id]--;
-                              if(newCart[item.id] <= 0) delete newCart[item.id];
-                              setCart(newCart);
-                            }} className="w-6 h-6 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400 active:bg-slate-100">-</button>
-                          )}
-                          {cart[item.id] > 0 && <span className="text-sm font-black text-slate-700">{cart[item.id]}</span>}
-                          <button onClick={() => setCart({...cart, [item.id]: (cart[item.id] || 0) + 1})} 
-                            className="w-7 h-7 bg-slate-900 text-white rounded-lg flex items-center justify-center shadow-lg active:scale-90 transition-transform font-bold text-lg">+</button>
+                    <div className="bg-slate-900 text-white px-4 py-2 rounded-2xl">
+                      <p className="text-[9px] opacity-60 font-bold text-center uppercase">Total Points</p>
+                      <p className="text-xl font-black text-center leading-none mt-1">{totalPoints}</p>
+                    </div>
+                  </header>
+
+                  <div className="flex flex-1 overflow-hidden mt-2">
+                    <div className="w-20 bg-slate-100 flex flex-col pt-4 overflow-y-auto no-scrollbar">
+                      {['必选项', '热菜', '主食', '饮品'].map(cat => (
+                        <button key={cat} onClick={() => setActiveCat(cat)} 
+                          className={`w-full py-5 text-xs font-bold transition-all ${activeCat === cat ? 'text-red-600 bg-white rounded-l-3xl shadow-sm' : 'text-slate-400'}`}>
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-4 bg-white rounded-tl-[32px] no-scrollbar pb-ios-safe">
+                      {MENU_DATA.filter(i => i.category === activeCat).map(item => (
+                        <div key={item.id} className="flex gap-4 mb-6 p-1">
+                          <div className="w-14 h-14 bg-slate-50 rounded-xl flex items-center justify-center text-2xl shadow-inner">
+                            {item.category === '饮品' ? '🥤' : item.category === '主食' ? '🍚' : '🥘'}
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-bold text-sm text-slate-800">{item.name}</h3>
+                            <p className="text-[10px] text-slate-400 line-clamp-1 italic">{item.desc}</p>
+                            <div className="flex justify-between items-center mt-2">
+                              <span className="text-red-600 font-black text-sm">+{item.price}</span>
+                              <div className="flex items-center gap-3">
+                                {cart[item.id] > 0 && <button onClick={() => {
+                                  let newCart = {...cart};
+                                  newCart[item.id]--;
+                                  if(newCart[item.id] <= 0) delete newCart[item.id];
+                                  setCart(newCart);
+                                }} className="w-7 h-7 border border-slate-200 rounded-lg flex items-center justify-center text-slate-400">-</button>}
+                                {cart[item.id] > 0 && <span className="text-sm font-black text-slate-700">{cart[item.id]}</span>}
+                                <button onClick={() => setCart({...cart, [item.id]: (cart[item.id] || 0) + 1})} className="w-7 h-7 bg-slate-900 text-white rounded-lg flex items-center justify-center shadow-md active:scale-90 transition-transform">+</button>
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      ))}
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            <footer className="p-6 bg-white border-t border-slate-50 pb-ios-safe">
-              {currentTotal > 0 && !hasMust && (
-                <div className="flex justify-center mb-4">
-                    <span className="px-4 py-1.5 bg-red-50 text-red-500 text-[10px] rounded-full font-bold animate-bounce shadow-sm">
-                       👆 请记得勾选“亲自下厨”必选项哦
-                    </span>
+                  {currentTotal > 0 && (
+                    <div className="fixed bottom-24 left-6 right-6 fade-in z-20">
+                      <button onClick={() => { setTotalPoints(totalPoints + currentTotal); setCart({}); alert('下单成功，做饭辛苦啦！积分已加！'); }}
+                        disabled={!hasMust}
+                        className={`w-full h-14 rounded-2xl font-black text-white shadow-2xl transition-all ${hasMust ? 'bg-red-600 active:scale-95' : 'bg-slate-300'}`}>
+                        {hasMust ? `确认下单 (+${currentTotal} 积分)` : '请勾选必选项'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* 愿望商店模式 */
+                <div className="h-full flex flex-col fade-in">
+                  <header className="p-6 pt-12 bg-white flex justify-between items-end shadow-sm">
+                    <div>
+                      <h1 className="text-2xl font-black text-slate-800 tracking-tighter">愿望商店</h1>
+                      <p className="text-[10px] text-blue-500 font-bold uppercase tracking-widest mt-1">Buyer: Rao Pinqi</p>
+                    </div>
+                    <div className="bg-red-500 text-white px-4 py-2 rounded-2xl">
+                      <p className="text-[9px] opacity-60 font-bold text-center uppercase">Points Left</p>
+                      <p className="text-xl font-black text-center leading-none mt-1">{totalPoints}</p>
+                    </div>
+                  </header>
+                  <div className="flex-1 overflow-y-auto p-6 no-scrollbar pb-ios-safe">
+                    {WISH_DATA.map(wish => (
+                      <div key={wish.id} className={`bg-white rounded-3xl p-5 mb-4 shadow-sm border border-slate-100 flex items-center gap-4 ${wish.name.includes('└') ? 'ml-6 opacity-90 scale-95 border-l-2 border-l-red-100' : ''}`}>
+                        <div className="text-3xl">{wish.icon}</div>
+                        <div className="flex-1">
+                          <h3 className="font-bold text-slate-800 text-sm">{wish.name}</h3>
+                          <p className="text-[10px] text-slate-400 mt-1">{wish.desc}</p>
+                          <div className="flex justify-between items-center mt-3">
+                            <span className="text-red-500 font-black text-sm">-{wish.price} <span className="text-[9px]">PTS</span></span>
+                            <button onClick={() => {
+                              if (totalPoints >= wish.price) {
+                                if(confirm(`确定消耗 ${wish.price} 积分兑换【${wish.name}】吗？`)) {
+                                  setTotalPoints(totalPoints - wish.price);
+                                  alert('兑换成功！快去找杨女士吧~');
+                                }
+                              } else {
+                                alert('积分不够啦，多做饭赚点分吧！');
+                              }
+                            }} className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all ${totalPoints >= wish.price ? 'bg-slate-900 text-white shadow-md active:scale-95' : 'bg-slate-100 text-slate-300'}`}>
+                              立即兑换
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
-              <button disabled={currentTotal === 0 || !hasMust} onClick={() => setStep('checkout')}
-                className={`w-full h-16 rounded-2xl flex items-center justify-between px-8 transition-all duration-300 mb-4 ${currentTotal > 0 && hasMust ? 'bg-red-600 shadow-red active:scale-95' : 'bg-slate-200'}`}>
-                <div className="text-left">
-                    <p className="text-white/60 text-[10px] font-bold uppercase">Total Amount</p>
-                    <span className="font-black text-xl text-white">{currentTotal} <span className="text-xs">积分</span></span>
-                </div>
-                <span className="font-black text-white text-sm bg-white/20 px-4 py-2 rounded-xl">结算 &rarr;</span>
+            </div>
+
+            <nav className="bottom-nav">
+              <button onClick={() => setTab('restaurant')} className={`flex flex-col items-center gap-1 transition-all ${tab === 'restaurant' ? 'text-red-600 scale-110' : 'text-slate-300'}`}>
+                <span className="text-xl">🍳</span>
+                <span className="text-[10px] font-black uppercase tracking-tighter">做饭赚分</span>
               </button>
-            </footer>
-          </div>
-        );
-
-        if (step === 'checkout') return (
-          <div className="h-full flex flex-col bg-slate-50 fade-in pt-ios-safe">
-            <header className="p-6 pt-12 flex items-center justify-between bg-white border-b border-slate-50">
-              <button onClick={() => setStep('ordering')} className="w-10 h-10 flex items-center justify-center bg-slate-50 rounded-full text-slate-400 active:scale-90 transition-all">←</button>
-              <h1 className="text-lg font-black tracking-tight text-slate-800">核对订单清单</h1>
-              <div className="w-10"></div>
-            </header>
-            <div className="flex-1 p-6 overflow-y-auto no-scrollbar">
-              <div className="bg-white rounded-[32px] p-8 shadow-soft mb-8 border border-slate-50 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-red-50 rounded-bl-full -mr-10 -mt-10 opacity-50"></div>
-                {Object.keys(cart).map(id => {
-                  const item = MENU_DATA.find(m => m.id == id);
-                  return (
-                    <div key={id} className="flex justify-between items-center mb-5 relative z-10">
-                      <div>
-                        <p className="text-slate-700 font-bold text-sm">{item.name}</p>
-                        <p className="text-[10px] text-slate-400">数量 × {cart[id]}</p>
-                      </div>
-                      <span className="font-black text-slate-900 text-sm">{item.price * cart[id]} <span className="text-[10px] text-slate-400">PTS</span></span>
-                    </div>
-                  )
-                })}
-                <div className="border-t border-dashed border-slate-200 mt-6 pt-6 flex justify-between items-center">
-                  <span className="font-bold text-slate-400 text-sm italic">Grand Total</span>
-                  <span className="text-3xl font-black text-red-600">{currentTotal} <span className="text-sm">积分</span></span>
-                </div>
-              </div>
-              <div className="px-4">
-                <div className="flex justify-between items-end mb-3">
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-tighter">🎯 Wish Progress</p>
-                    <p className="text-xs font-black text-orange-500">{totalHistory + currentTotal} / 100</p>
-                </div>
-                <div className="h-4 bg-white rounded-full p-1 shadow-inner overflow-hidden border border-slate-100">
-                  <div className="h-full bg-gradient-to-r from-orange-400 to-yellow-400 rounded-full transition-all duration-1000 progress-glow" 
-                       style={{width: `${Math.min(totalHistory + currentTotal, 100)}%`}}></div>
-                </div>
-              </div>
-            </div>
-            <footer className="p-6 bg-white pb-ios-safe border-t border-slate-50">
-              <button onClick={() => { setTotalHistory(totalHistory + currentTotal); setStep('success'); }} 
-                className="w-full bg-slate-900 text-white h-16 rounded-2xl font-black text-lg shadow-2xl active:scale-95 transition-all mb-4">确认支付并下单</button>
-            </footer>
-          </div>
-        );
-
-        if (step === 'success') return (
-          <div className="h-full bg-white flex flex-col items-center justify-center p-10 text-center fade-in pt-ios-safe pb-ios-safe">
-            <div className="w-24 h-24 bg-green-50 rounded-[32px] flex items-center justify-center text-4xl mb-8 shadow-inner border border-green-100 animate-bounce">✅</div>
-            <h1 className="text-3xl font-black mb-2 text-slate-800 tracking-tight">下单成功啦！</h1>
-            <p className="text-slate-400 text-xs mb-10 tracking-widest font-light uppercase text-center">Chef is preparing your love...</p>
-            <div className="w-full bg-slate-50 rounded-[40px] p-10 mb-10 border border-slate-100 shadow-inner relative">
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-4 py-1 rounded-full border border-slate-100 text-[10px] font-black text-slate-300 uppercase tracking-widest text-center">Order Ticket</div>
-              <p className="text-[10px] text-slate-400 mb-2 uppercase font-bold text-center">取餐凭证</p>
-              <p className="text-5xl font-black tracking-[0.2em] text-red-600 drop-shadow-sm text-center">5201314</p>
-            </div>
-            <div className="w-full px-4 mb-14">
-                <div className="flex justify-between items-end mb-2 px-1">
-                    <span className="text-[10px] font-black text-slate-400 uppercase">Current Progress</span>
-                    <span className="text-[10px] font-black text-orange-500">{totalHistory}%</span>
-                </div>
-                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-orange-400 to-yellow-400 transition-all duration-1000" style={{width: `${Math.min(totalHistory, 100)}%`}}></div>
-                </div>
-            </div>
-            <button onClick={() => { setCart({}); setStep('welcome'); }} 
-              className="bg-slate-900 text-white px-16 py-4 rounded-2xl font-black shadow-xl active:scale-95 transition-all">返回首页</button>
+              <button onClick={() => setTab('shop')} className={`flex flex-col items-center gap-1 transition-all ${tab === 'shop' ? 'text-red-600 scale-110' : 'text-slate-300'}`}>
+                <span className="text-xl">🎁</span>
+                <span className="text-[10px] font-black uppercase tracking-tighter">愿望商店</span>
+              </button>
+            </nav>
           </div>
         );
       }
