@@ -15,24 +15,23 @@
       body { font-family: 'Noto Sans SC', sans-serif; -webkit-tap-highlight-color: transparent; position: fixed; width: 100%; height: 100%; overflow: hidden; }
       .no-scrollbar::-webkit-scrollbar { display: none; }
       .h-safe-screen { height: 100dvh; }
-      .fade-in { animation: fadeIn 0.4s ease-out forwards; }
-      @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
       
-      /* 底部导航栏适配 */
+      /* 动画定义 */
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes scaleIn { from { opacity: 0; transform: scale(0.9) translateY(20px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+      @keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
+      
+      .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+      .scale-in { animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+      .overlay-in { animation: overlayIn 0.3s ease-out forwards; }
+      
       .bottom-nav { 
-        position: fixed; 
-        bottom: 0; 
-        left: 0; 
-        right: 0; 
+        position: fixed; bottom: 0; left: 0; right: 0; 
         height: calc(60px + env(safe-area-inset-bottom)); 
-        background: rgba(255,255,255,0.98); 
-        backdrop-filter: blur(20px); 
+        background: rgba(255,255,255,0.98); backdrop-filter: blur(20px); 
         border-top: 1px solid rgba(0,0,0,0.05); 
-        display: flex; 
-        justify-content: space-around; 
-        align-items: center; 
-        padding-bottom: env(safe-area-inset-bottom); 
-        z-index: 100; 
+        display: flex; justify-content: space-around; align-items: center; 
+        padding-bottom: env(safe-area-inset-bottom); z-index: 100; 
       }
     </style>
   </head>
@@ -42,7 +41,7 @@
     <script type="text/babel">
       const { useState, useEffect } = React;
 
-      // 保持原始菜单数据不变
+      // 原始菜单数据
       const MENU_DATA = [
         { id: 99, name: '饶品祺亲自下厨', price: 20, category: '必选项', desc: '店长特供，今日厨艺精进中', must: true },
         { id: 1, name: '辣椒炒肉', price: 18, category: '热菜', desc: '鲜嫩下饭，招牌必点' },
@@ -66,6 +65,7 @@
         { id: 19, name: '开水', price: 0, category: '饮品', desc: '暖胃免费' }
       ];
 
+      // 愿望商店数据
       const WISH_DATA = [
         { id: 'w1', name: '充电一次', price: 100, category: '核心', icon: '🔋', desc: '基础充电能量补充' },
         { id: 'w1_sub1', name: '└ 附加：战袍自选', price: 50, category: '核心', icon: '👗', desc: '指定今日特别穿搭' },
@@ -76,51 +76,113 @@
         { id: 'w5', name: '大奖：全天听话', price: 500, category: '终极', icon: '🏆', desc: '24小时绝对服从指令' }
       ];
 
+      // --- 新增：美化弹窗组件 ---
+      function Modal({ visible, title, content, onConfirm, onCancel, type = 'info' }) {
+        if (!visible) return null;
+        const isConfirm = !!onCancel;
+        return (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center px-6 overlay-in">
+            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onCancel || onConfirm}></div>
+            <div className="bg-white w-full max-w-sm rounded-[32px] p-8 shadow-2xl relative z-10 scale-in border border-slate-100">
+              <div className="flex flex-col items-center text-center">
+                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mb-4 ${
+                  type === 'success' ? 'bg-green-50 text-green-500' : 
+                  type === 'shop' ? 'bg-orange-50 text-orange-500' : 'bg-slate-50 text-slate-500'
+                }`}>
+                  {type === 'success' ? '✅' : type === 'shop' ? '🎁' : '💡'}
+                </div>
+                <h3 className="text-xl font-black text-slate-800 mb-2">{title}</h3>
+                <p className="text-slate-400 text-sm leading-relaxed mb-8">{content}</p>
+                <div className="flex gap-3 w-full">
+                  {isConfirm && (
+                    <button onClick={onCancel} className="flex-1 h-14 rounded-2xl font-bold text-slate-400 bg-slate-50 active:scale-95 transition-all">取消</button>
+                  )}
+                  <button onClick={onConfirm} className={`flex-1 h-14 rounded-2xl font-bold text-white shadow-lg active:scale-95 transition-all ${
+                    type === 'shop' ? 'bg-slate-900 shadow-slate-200' : 'bg-red-600 shadow-red-100'
+                  }`}>确定</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
       function App() {
         const [tab, setTab] = useState('restaurant');
         const [step, setStep] = useState('welcome');
         const [cart, setCart] = useState({});
         const [activeCat, setActiveCat] = useState('必选项');
-        
-        const [totalPoints, setTotalPoints] = useState(() => {
-          const saved = localStorage.getItem('rpq_restaurant_points');
-          return saved ? parseInt(saved) : 0;
-        });
+        const [totalPoints, setTotalPoints] = useState(() => parseInt(localStorage.getItem('rpq_points') || '0'));
 
-        useEffect(() => {
-          localStorage.setItem('rpq_restaurant_points', totalPoints.toString());
-        }, [totalPoints]);
+        // 弹窗状态
+        const [modal, setModal] = useState({ visible: false, title: '', content: '', onConfirm: null, onCancel: null, type: 'info' });
 
-        const currentTotal = Object.keys(cart).reduce((sum, id) => {
-          const item = MENU_DATA.find(m => m.id == id);
-          return sum + (item.price * cart[id]);
-        }, 0);
+        useEffect(() => { localStorage.setItem('rpq_points', totalPoints); }, [totalPoints]);
 
+        const currentTotal = Object.keys(cart).reduce((sum, id) => sum + (MENU_DATA.find(m => m.id == id).price * cart[id]), 0);
         const hasMust = Object.keys(cart).some(id => MENU_DATA.find(m => m.id == id).must);
+
+        const showModal = (config) => setModal({ visible: true, ...config });
+        const closeModal = () => setModal({ ...modal, visible: false });
+
+        const handleCheckout = () => {
+          showModal({
+            title: '确认下单吗？',
+            content: `本次做饭将为你增加 ${currentTotal} 积分，Chef 辛苦啦！`,
+            type: 'success',
+            onConfirm: () => {
+              setTotalPoints(totalPoints + currentTotal);
+              setCart({});
+              closeModal();
+            },
+            onCancel: closeModal
+          });
+        };
+
+        const handleRedeem = (wish) => {
+          if (totalPoints < wish.price) {
+            showModal({ title: '积分不足', content: '快去做饭赚点分吧，还差一点点哦～', onConfirm: closeModal });
+            return;
+          }
+          showModal({
+            title: '确认兑换？',
+            content: `确定消耗 ${wish.price} 积分兑换【${wish.name}】吗？`,
+            type: 'shop',
+            onConfirm: () => {
+              setTotalPoints(totalPoints - wish.price);
+              closeModal();
+              setTimeout(() => {
+                showModal({ title: '兑换成功', content: `请凭此记录找杨女士领取奖励：${wish.name}`, type: 'success', onConfirm: closeModal });
+              }, 400);
+            },
+            onCancel: closeModal
+          });
+        };
 
         if (step === 'welcome') return (
           <div className="h-full bg-slate-900 flex flex-col items-center justify-center text-white p-6 fade-in relative overflow-hidden">
             <div className="absolute top-[-10%] left-[-10%] w-64 h-64 bg-red-500 rounded-full blur-3xl opacity-10"></div>
             <div className="text-8xl mb-8 animate-bounce text-red-500">❤️</div>
             <h1 className="text-3xl font-black mb-2 text-center tracking-tight">饶 & 杨 的生活系统</h1>
-            <p className="text-slate-500 text-xs mb-12 tracking-[0.3em] uppercase">Private Life Management</p>
-            <button onClick={() => setStep('main')} className="bg-white text-slate-900 px-14 py-4 rounded-2xl font-black shadow-2xl active:scale-95 transition-all relative z-10">点击进入</button>
+            <p className="text-slate-500 text-xs mb-12 tracking-[0.3em] uppercase italic text-center">Love & Efficiency Management</p>
+            <button onClick={() => setStep('main')} className="bg-white text-slate-900 px-14 py-4 rounded-2xl font-black shadow-2xl active:scale-95 transition-all relative z-10">点击进入系统</button>
           </div>
         );
 
         return (
           <div className="h-full flex flex-col bg-slate-50">
+            <Modal {...modal} />
             <div className="flex-1 overflow-hidden relative">
               {tab === 'restaurant' ? (
                 <div className="h-full flex flex-col fade-in">
                   <header className="p-6 pt-12 bg-white flex justify-between items-end shadow-sm z-10">
                     <div>
-                      <h1 className="text-2xl font-black text-slate-800 tracking-tighter">今日菜单</h1>
+                      <h1 className="text-2xl font-black text-slate-800 tracking-tighter">做饭赚分</h1>
                       <p className="text-[10px] text-green-500 font-bold uppercase tracking-widest mt-1">Chef: Rao Pinqi</p>
                     </div>
-                    <div className="bg-slate-900 text-white px-4 py-2 rounded-2xl">
-                      <p className="text-[9px] opacity-60 font-bold text-center uppercase leading-tight">Total Points</p>
-                      <p className="text-xl font-black text-center leading-none mt-1">{totalPoints}</p>
+                    <div className="bg-slate-900 text-white px-4 py-2 rounded-2xl text-center">
+                      <p className="text-[9px] opacity-60 font-bold uppercase leading-tight">Total Points</p>
+                      <p className="text-xl font-black mt-0.5">{totalPoints}</p>
                     </div>
                   </header>
 
@@ -133,11 +195,10 @@
                         </button>
                       ))}
                     </div>
-                    {/* 优化：右侧列表增加超大底部内边距，确保内容可以滑出按钮区 */}
                     <div className="flex-1 overflow-y-auto p-4 bg-white rounded-tl-[32px] no-scrollbar pb-[240px]">
                       {MENU_DATA.filter(i => i.category === activeCat).map(item => (
                         <div key={item.id} className="flex gap-4 mb-6 p-1">
-                          <div className="w-14 h-14 bg-slate-50 rounded-xl flex items-center justify-center text-2xl shadow-inner">
+                          <div className="w-14 h-14 bg-slate-50 rounded-xl flex items-center justify-center text-2xl shadow-inner border border-slate-50">
                             {item.category === '饮品' ? '🥤' : item.category === '主食' ? '🍚' : '🥘'}
                           </div>
                           <div className="flex-1">
@@ -162,12 +223,10 @@
                     </div>
                   </div>
                   
-                  {/* 核心优化：改成中间对齐的胶囊按钮，不全屏覆盖，且位置合理悬浮 */}
                   {currentTotal > 0 && (
                     <div className="absolute bottom-[85px] left-0 right-0 flex justify-center px-6 z-[60] fade-in">
-                      <button onClick={() => { setTotalPoints(totalPoints + currentTotal); setCart({}); alert('下单成功，做饭辛苦啦！积分已加！'); }}
-                        disabled={!hasMust}
-                        className={`w-auto min-w-[200px] h-14 px-10 rounded-full font-black text-white shadow-[0_20px_40px_rgba(220,38,38,0.3)] transition-all ${hasMust ? 'bg-red-600 active:scale-95' : 'bg-slate-300'}`}>
+                      <button onClick={handleCheckout} disabled={!hasMust}
+                        className={`w-auto min-w-[220px] h-14 px-10 rounded-full font-black text-white shadow-[0_20px_40px_rgba(220,38,38,0.3)] transition-all ${hasMust ? 'bg-red-600 active:scale-95' : 'bg-slate-300'}`}>
                         {hasMust ? `确认下单 (+${currentTotal} 积分)` : '请勾选必选项'}
                       </button>
                     </div>
@@ -180,30 +239,21 @@
                       <h1 className="text-2xl font-black text-slate-800 tracking-tighter">愿望商店</h1>
                       <p className="text-[10px] text-blue-500 font-bold uppercase tracking-widest mt-1">Buyer: Rao Pinqi</p>
                     </div>
-                    <div className="bg-red-500 text-white px-4 py-2 rounded-2xl">
-                      <p className="text-[9px] opacity-60 font-bold text-center uppercase leading-tight">Points Left</p>
-                      <p className="text-xl font-black text-center leading-none mt-1">{totalPoints}</p>
+                    <div className="bg-red-500 text-white px-4 py-2 rounded-2xl text-center">
+                      <p className="text-[9px] opacity-60 font-bold uppercase leading-tight">Points Left</p>
+                      <p className="text-xl font-black mt-0.5">{totalPoints}</p>
                     </div>
                   </header>
                   <div className="flex-1 overflow-y-auto p-6 no-scrollbar pb-32">
                     {WISH_DATA.map(wish => (
-                      <div key={wish.id} className={`bg-white rounded-3xl p-5 mb-4 shadow-sm border border-slate-100 flex items-center gap-4 ${wish.name.includes('└') ? 'ml-6 opacity-90 scale-95 border-l-2 border-l-red-100' : ''}`}>
+                      <div key={wish.id} className={`bg-white rounded-[32px] p-5 mb-4 shadow-sm border border-slate-100 flex items-center gap-4 ${wish.name.includes('└') ? 'ml-6 opacity-90 scale-95 border-l-2 border-l-red-100' : ''}`}>
                         <div className="text-3xl">{wish.icon}</div>
                         <div className="flex-1">
                           <h3 className="font-bold text-slate-800 text-sm">{wish.name}</h3>
                           <p className="text-[10px] text-slate-400 mt-1">{wish.desc}</p>
                           <div className="flex justify-between items-center mt-3">
                             <span className="text-red-500 font-black text-sm">-{wish.price} <span className="text-[9px]">PTS</span></span>
-                            <button onClick={() => {
-                              if (totalPoints >= wish.price) {
-                                if(confirm(`确定消耗 ${wish.price} 积分兑换吗？`)) {
-                                  setTotalPoints(totalPoints - wish.price);
-                                  alert('兑换成功！快去找杨女士吧~');
-                                }
-                              } else {
-                                alert('积分不够啦，多做饭赚点分吧！');
-                              }
-                            }} className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all ${totalPoints >= wish.price ? 'bg-slate-900 text-white shadow-md active:scale-95' : 'bg-slate-100 text-slate-300'}`}>
+                            <button onClick={() => handleRedeem(wish)} className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all ${totalPoints >= wish.price ? 'bg-slate-900 text-white shadow-md active:scale-95' : 'bg-slate-100 text-slate-300'}`}>
                               立即兑换
                             </button>
                           </div>
