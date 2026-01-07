@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>饶品祺 & 杨颜睿 餐厅</title>
+    <meta name="description" content="智能点餐 system - 美味触手可及">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+      body { font-family: 'Noto Sans SC', sans-serif; -webkit-tap-highlight-color: transparent; }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      .animate-bounce-small { animation: bounce-small 1s infinite; }
+      @keyframes bounce-small {
+        0%, 100% { transform: translateY(-10%); animation-timing-function: cubic-bezier(0.8, 0, 1, 1); }
+        50% { transform: translateY(0); animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+      }
+      .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+  </head>
+  <body class="bg-gray-50 text-gray-900 h-screen overflow-hidden selection:bg-red-100 selection:text-red-900">
+    <div id="root" class="h-full w-full"></div>
+
+    <script type="text/babel">
+      const { useState } = React;
+
+      const MENU_ITEMS = [
+        { id: 'c1', name: '辣椒炒肉', description: '鲜嫩猪肉搭配青尖椒爆炒，香辣下饭。', price: 28.0, category: '热菜', tags: ['招牌', '辣'] },
+        { id: 'c2', name: '水蒸蛋', description: '口感滑嫩，入口即化，滴入香油与葱花。', price: 12.0, category: '热菜', tags: ['清淡'] },
+        { id: 'c3', name: '西兰花炒虾仁', description: '新鲜虾仁搭配爽脆西兰花，营养均衡。', price: 32.0, category: '热菜', tags: ['健康'] },
+        { id: 's1', name: '米饭', description: '精选东北大米，粒粒饱满。', price: 2.0, category: '主食', tags: [] },
+        { id: 'd2', name: '可乐', description: '冰镇快乐水。', price: 5.0, category: '饮品', tags: ['冰'] }
+      ];
+
+      const CATEGORIES = ['热菜', '主食', '饮品'];
+
+      function App() {
+        const [step, setStep] = useState('welcome');
+        const [cart, setCart] = useState([]);
+        const [activeCategory, setActiveCategory] = useState('热菜');
+
+        const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        const totalCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+        const addToCart = (item) => {
+          setCart(prev => {
+            const exist = prev.find(i => i.id === item.id);
+            if (exist) return prev.map(i => i.id === item.id ? {...i, quantity: i.quantity + 1} : i);
+            return [...prev, {...item, quantity: 1}];
+          });
+        };
+
+        const removeFromCart = (id) => {
+          setCart(prev => prev.map(i => i.id === id ? {...i, quantity: Math.max(0, i.quantity - 1)} : i).filter(i => i.quantity > 0));
+        };
+
+        // 欢迎页
+        if (step === 'welcome') return (
+          <div className="h-full bg-red-600 flex flex-col items-center justify-center text-white p-6 fade-in">
+            <div className="mb-8 animate-bounce-small text-6xl">🍳</div>
+            <h1 className="text-4xl font-black mb-2 tracking-tighter">饶品祺 & 杨颜睿 餐厅</h1>
+            <p className="text-red-100 mb-12 opacity-80 font-light">智能点餐系统 · 美味触手可及</p>
+            <button onClick={() => setStep('ordering')} className="bg-white text-red-600 px-16 py-4 rounded-full text-xl font-black shadow-2xl active:scale-95 transition-transform">即刻开启</button>
+          </div>
+        );
+
+        // 点餐页
+        if (step === 'ordering') return (
+          <div className="h-full flex flex-col bg-white max-w-md mx-auto fade-in shadow-2xl">
+            <header className="p-6 pt-10 border-b flex justify-between items-end">
+              <div><h1 className="text-2xl font-black text-gray-900">今日菜单</h1><p className="text-gray-400 text-sm">桌号: A区 08</p></div>
+            </header>
+            <div className="flex flex-1 overflow-hidden">
+              <div className="w-24 bg-gray-50 flex flex-col border-r">
+                {CATEGORIES.map(cat => (
+                  <button key={cat} onClick={() => setActiveCategory(cat)} className={`py-6 text-sm font-bold ${activeCategory === cat ? 'bg-white text-red-600 border-l-4 border-red-600' : 'text-gray-400'}`}>{cat}</button>
+                ))}
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 no-scrollbar">
+                {MENU_ITEMS.filter(i => i.category === activeCategory).map(item => (
+                  <div key={item.id} className="flex gap-4 mb-8 items-start">
+                    <div className="w-16 h-16 bg-gray-100 rounded-2xl flex-shrink-0 flex items-center justify-center text-xl shadow-inner">🍲</div>
+                    <div className="flex-1">
+                      <h3 className="font-bold text-gray-800">{item.name}</h3>
+                      <p className="text-[10px] text-gray-400 mb-2 line-clamp-1">{item.description}</p>
+                      <div className="flex justify-between items-center">
+                        <span className="text-red-600 font-black">¥{item.price.toFixed(1)}</span>
+                        <div className="flex items-center gap-3">
+                          {cart.find(i => i.id === item.id) && <button onClick={() => removeFromCart(item.id)} className="w-6 h-6 border rounded-full flex items-center justify-center">-</button>}
+                          <span className="text-sm font-bold">{cart.find(i => i.id === item.id)?.quantity || ''}</span>
+                          <button onClick={() => addToCart(item)} className="w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg active:scale-90">+</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <footer className="p-4 bg-white border-t pb-8">
+              <button onClick={() => setStep('checkout')} disabled={totalCount === 0} className={`w-full h-14 rounded-2xl flex items-center justify-between px-6 shadow-xl ${totalCount > 0 ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-400'}`}>
+                <span className="font-bold text-lg text-white">¥{totalPrice.toFixed(1)}</span>
+                <span className="font-bold text-white">选好了 &rarr;</span>
+              </button>
+            </footer>
+          </div>
+        );
+
+        // 结算页
+        if (step === 'checkout') return (
+          <div className="h-full flex flex-col bg-gray-50 max-w-md mx-auto fade-in">
+            <div className="p-6 flex items-center gap-4 bg-white border-b">
+              <button onClick={() => setStep('ordering')} className="text-2xl text-gray-400">←</button>
+              <h1 className="text-xl font-black">确认订单</h1>
+            </div>
+            <div className="flex-1 p-4">
+              <div className="bg-white rounded-3xl p-6 shadow-sm mb-4">
+                {cart.map(item => (
+                  <div key={item.id} className="flex justify-between mb-4">
+                    <span>{item.name} x{item.quantity}</span>
+                    <span className="font-bold">¥{(item.price * item.quantity).toFixed(1)}</span>
+                  </div>
+                ))}
+                <div className="border-t border-dashed mt-4 pt-4 flex justify-between items-center">
+                  <span className="font-bold">实付</span>
+                  <span className="text-2xl font-black text-red-600">¥{totalPrice.toFixed(1)}</span>
+                </div>
+              </div>
+            </div>
+            <footer className="p-6 bg-white pb-10">
+              <button onClick={() => setStep('success')} className="w-full bg-gray-900 text-white h-16 rounded-2xl font-black text-lg shadow-2xl active:scale-95 transition-transform">立即支付</button>
+            </footer>
+          </div>
+        );
+
+        // 成功页 (取餐码已改为固定值)
+        if (step === 'success') return (
+          <div className="h-full bg-white flex flex-col items-center justify-center p-8 text-center fade-in">
+            <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center text-4xl mb-6 shadow-inner">✅</div>
+            <h1 className="text-3xl font-black mb-2 text-gray-900">下单成功</h1>
+            <p className="text-gray-400 mb-12">请您稍作片刻，大厨正在疯狂翻炒中...</p>
+            <div className="w-full bg-gray-50 rounded-3xl p-6 mb-12">
+              <p className="text-xs text-gray-400 mb-1">取餐码</p>
+              {/* 这里修改为了固定值 5201314 */}
+              <p className="text-4xl font-black tracking-widest text-red-600">5201314</p>
+            </div>
+            <button onClick={() => {setCart([]); setStep('welcome');}} className="text-red-600 font-bold px-8 py-3 rounded-xl border-2 border-red-600 hover:bg-red-50">返回首页</button>
+          </div>
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<App />);
+    </script>
+  </body>
+</html>
