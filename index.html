@@ -12,7 +12,6 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-      /* 3. iOS 适配：禁止 body 橡皮筋回弹，锁定视口 */
       body { 
         font-family: 'Noto Sans SC', sans-serif; 
         -webkit-tap-highlight-color: transparent;
@@ -22,26 +21,15 @@
         overflow: hidden;
       }
       .no-scrollbar::-webkit-scrollbar { display: none; }
-      
-      /* 4. iOS 适配：解决 100vh 在 Safari 工具栏下的显示问题 */
       .h-safe-screen { height: 100dvh; }
-
-      /* 增强动画 */
       @keyframes soft-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
       .animate-soft-bounce { animation: soft-bounce 3s infinite ease-in-out; }
-      
       .fade-in { animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
       @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-      
-      /* 毛玻璃与投影优化 */
       .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
       .shadow-soft { box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05); }
       .shadow-red { box-shadow: 0 10px 15px -3px rgba(220, 38, 38, 0.3); }
-      
-      /* 进度条发光 */
       .progress-glow { box-shadow: 0 0 12px rgba(245, 158, 11, 0.3); }
-
-      /* 5. iOS 适配：定义安全区域边距变量 */
       .pt-ios-safe { padding-top: env(safe-area-inset-top); }
       .pb-ios-safe { padding-bottom: env(safe-area-inset-bottom); }
     </style>
@@ -50,7 +38,7 @@
     <div id="root" class="h-safe-screen w-full"></div>
 
     <script type="text/babel">
-      const { useState } = React;
+      const { useState, useEffect } = React;
 
       const MENU_DATA = [
         { id: 99, name: '饶品祺亲自下厨', price: 20, category: '必选项', desc: '店长特供，今日厨艺精进中', must: true },
@@ -79,7 +67,17 @@
         const [step, setStep] = useState('welcome');
         const [cart, setCart] = useState({});
         const [activeCat, setActiveCat] = useState('必选项');
-        const [totalHistory, setTotalHistory] = useState(0);
+        
+        // --- 方案一核心修改：初始化时尝试从本地读取积分 ---
+        const [totalHistory, setTotalHistory] = useState(() => {
+          const saved = localStorage.getItem('rpq_restaurant_points');
+          return saved ? parseInt(saved) : 0;
+        });
+
+        // --- 方案一核心修改：当积分发生变化时，同步到本地存储 ---
+        useEffect(() => {
+          localStorage.setItem('rpq_restaurant_points', totalHistory.toString());
+        }, [totalHistory]);
 
         const currentTotal = Object.keys(cart).reduce((sum, id) => {
           const item = MENU_DATA.find(m => m.id == id);
