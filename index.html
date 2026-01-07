@@ -17,8 +17,23 @@
       .h-safe-screen { height: 100dvh; }
       .fade-in { animation: fadeIn 0.4s ease-out forwards; }
       @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-      .pb-ios-safe { padding-bottom: calc(env(safe-area-inset-bottom) + 80px); }
-      .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: calc(65px + env(safe-area-inset-bottom)); background: rgba(255,255,255,0.95); backdrop-filter: blur(20px); border-top: 1px solid rgba(0,0,0,0.05); display: flex; justify-content: space-around; align-items: center; padding-bottom: env(safe-area-inset-bottom); z-index: 50; }
+      
+      /* 底部导航栏适配 */
+      .bottom-nav { 
+        position: fixed; 
+        bottom: 0; 
+        left: 0; 
+        right: 0; 
+        height: calc(60px + env(safe-area-inset-bottom)); 
+        background: rgba(255,255,255,0.98); 
+        backdrop-filter: blur(20px); 
+        border-top: 1px solid rgba(0,0,0,0.05); 
+        display: flex; 
+        justify-content: space-around; 
+        align-items: center; 
+        padding-bottom: env(safe-area-inset-bottom); 
+        z-index: 100; 
+      }
     </style>
   </head>
   <body class="bg-slate-50 text-slate-900">
@@ -27,7 +42,7 @@
     <script type="text/babel">
       const { useState, useEffect } = React;
 
-      // 1. 完整原始菜单数据
+      // 保持原始菜单数据不变
       const MENU_DATA = [
         { id: 99, name: '饶品祺亲自下厨', price: 20, category: '必选项', desc: '店长特供，今日厨艺精进中', must: true },
         { id: 1, name: '辣椒炒肉', price: 18, category: '热菜', desc: '鲜嫩下饭，招牌必点' },
@@ -51,7 +66,6 @@
         { id: 19, name: '开水', price: 0, category: '饮品', desc: '暖胃免费' }
       ];
 
-      // 2. 愿望商店数据 (价格已按要求更新)
       const WISH_DATA = [
         { id: 'w1', name: '充电一次', price: 100, category: '核心', icon: '🔋', desc: '基础充电能量补充' },
         { id: 'w1_sub1', name: '└ 附加：战袍自选', price: 50, category: '核心', icon: '👗', desc: '指定今日特别穿搭' },
@@ -98,29 +112,29 @@
           <div className="h-full flex flex-col bg-slate-50">
             <div className="flex-1 overflow-hidden relative">
               {tab === 'restaurant' ? (
-                /* 餐厅模式 */
                 <div className="h-full flex flex-col fade-in">
-                  <header className="p-6 pt-12 bg-white flex justify-between items-end shadow-sm">
+                  <header className="p-6 pt-12 bg-white flex justify-between items-end shadow-sm z-10">
                     <div>
                       <h1 className="text-2xl font-black text-slate-800 tracking-tighter">今日菜单</h1>
                       <p className="text-[10px] text-green-500 font-bold uppercase tracking-widest mt-1">Chef: Rao Pinqi</p>
                     </div>
                     <div className="bg-slate-900 text-white px-4 py-2 rounded-2xl">
-                      <p className="text-[9px] opacity-60 font-bold text-center uppercase">Total Points</p>
+                      <p className="text-[9px] opacity-60 font-bold text-center uppercase leading-tight">Total Points</p>
                       <p className="text-xl font-black text-center leading-none mt-1">{totalPoints}</p>
                     </div>
                   </header>
 
-                  <div className="flex flex-1 overflow-hidden mt-2">
+                  <div className="flex flex-1 overflow-hidden mt-1">
                     <div className="w-20 bg-slate-100 flex flex-col pt-4 overflow-y-auto no-scrollbar">
                       {['必选项', '热菜', '主食', '饮品'].map(cat => (
                         <button key={cat} onClick={() => setActiveCat(cat)} 
-                          className={`w-full py-5 text-xs font-bold transition-all ${activeCat === cat ? 'text-red-600 bg-white rounded-l-3xl shadow-sm' : 'text-slate-400'}`}>
+                          className={`w-full py-5 text-xs font-bold transition-all ${activeCat === cat ? 'text-red-600 bg-white shadow-sm' : 'text-slate-400'}`}>
                           {cat}
                         </button>
                       ))}
                     </div>
-                    <div className="flex-1 overflow-y-auto p-4 bg-white rounded-tl-[32px] no-scrollbar pb-ios-safe">
+                    {/* 优化：右侧列表增加超大底部内边距，确保内容可以滑出按钮区 */}
+                    <div className="flex-1 overflow-y-auto p-4 bg-white rounded-tl-[32px] no-scrollbar pb-[240px]">
                       {MENU_DATA.filter(i => i.category === activeCat).map(item => (
                         <div key={item.id} className="flex gap-4 mb-6 p-1">
                           <div className="w-14 h-14 bg-slate-50 rounded-xl flex items-center justify-center text-2xl shadow-inner">
@@ -147,18 +161,19 @@
                       ))}
                     </div>
                   </div>
+                  
+                  {/* 核心优化：改成中间对齐的胶囊按钮，不全屏覆盖，且位置合理悬浮 */}
                   {currentTotal > 0 && (
-                    <div className="fixed bottom-24 left-6 right-6 fade-in z-20">
+                    <div className="absolute bottom-[85px] left-0 right-0 flex justify-center px-6 z-[60] fade-in">
                       <button onClick={() => { setTotalPoints(totalPoints + currentTotal); setCart({}); alert('下单成功，做饭辛苦啦！积分已加！'); }}
                         disabled={!hasMust}
-                        className={`w-full h-14 rounded-2xl font-black text-white shadow-2xl transition-all ${hasMust ? 'bg-red-600 active:scale-95' : 'bg-slate-300'}`}>
+                        className={`w-auto min-w-[200px] h-14 px-10 rounded-full font-black text-white shadow-[0_20px_40px_rgba(220,38,38,0.3)] transition-all ${hasMust ? 'bg-red-600 active:scale-95' : 'bg-slate-300'}`}>
                         {hasMust ? `确认下单 (+${currentTotal} 积分)` : '请勾选必选项'}
                       </button>
                     </div>
                   )}
                 </div>
               ) : (
-                /* 愿望商店模式 */
                 <div className="h-full flex flex-col fade-in">
                   <header className="p-6 pt-12 bg-white flex justify-between items-end shadow-sm">
                     <div>
@@ -166,11 +181,11 @@
                       <p className="text-[10px] text-blue-500 font-bold uppercase tracking-widest mt-1">Buyer: Rao Pinqi</p>
                     </div>
                     <div className="bg-red-500 text-white px-4 py-2 rounded-2xl">
-                      <p className="text-[9px] opacity-60 font-bold text-center uppercase">Points Left</p>
+                      <p className="text-[9px] opacity-60 font-bold text-center uppercase leading-tight">Points Left</p>
                       <p className="text-xl font-black text-center leading-none mt-1">{totalPoints}</p>
                     </div>
                   </header>
-                  <div className="flex-1 overflow-y-auto p-6 no-scrollbar pb-ios-safe">
+                  <div className="flex-1 overflow-y-auto p-6 no-scrollbar pb-32">
                     {WISH_DATA.map(wish => (
                       <div key={wish.id} className={`bg-white rounded-3xl p-5 mb-4 shadow-sm border border-slate-100 flex items-center gap-4 ${wish.name.includes('└') ? 'ml-6 opacity-90 scale-95 border-l-2 border-l-red-100' : ''}`}>
                         <div className="text-3xl">{wish.icon}</div>
@@ -181,7 +196,7 @@
                             <span className="text-red-500 font-black text-sm">-{wish.price} <span className="text-[9px]">PTS</span></span>
                             <button onClick={() => {
                               if (totalPoints >= wish.price) {
-                                if(confirm(`确定消耗 ${wish.price} 积分兑换【${wish.name}】吗？`)) {
+                                if(confirm(`确定消耗 ${wish.price} 积分兑换吗？`)) {
                                   setTotalPoints(totalPoints - wish.price);
                                   alert('兑换成功！快去找杨女士吧~');
                                 }
@@ -201,13 +216,13 @@
             </div>
 
             <nav className="bottom-nav">
-              <button onClick={() => setTab('restaurant')} className={`flex flex-col items-center gap-1 transition-all ${tab === 'restaurant' ? 'text-red-600 scale-110' : 'text-slate-300'}`}>
+              <button onClick={() => setTab('restaurant')} className={`flex flex-col items-center gap-1 transition-all ${tab === 'restaurant' ? 'text-red-600 scale-105' : 'text-slate-300'}`}>
                 <span className="text-xl">🍳</span>
-                <span className="text-[10px] font-black uppercase tracking-tighter">做饭赚分</span>
+                <span className="text-[10px] font-black uppercase">做饭赚分</span>
               </button>
-              <button onClick={() => setTab('shop')} className={`flex flex-col items-center gap-1 transition-all ${tab === 'shop' ? 'text-red-600 scale-110' : 'text-slate-300'}`}>
+              <button onClick={() => setTab('shop')} className={`flex flex-col items-center gap-1 transition-all ${tab === 'shop' ? 'text-red-600 scale-105' : 'text-slate-300'}`}>
                 <span className="text-xl">🎁</span>
-                <span className="text-[10px] font-black uppercase tracking-tighter">愿望商店</span>
+                <span className="text-[10px] font-black uppercase">愿望商店</span>
               </button>
             </nav>
           </div>
